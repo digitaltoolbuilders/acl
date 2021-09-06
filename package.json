@@ -1,0 +1,25 @@
+{
+  "name": "@digitaltoolbuilders/acl",
+  "version": "0.1.0",
+  "main": "index.js",
+  "author": "Shawn Ostler <shawn@incdev.co>",
+  "license": "MIT",
+  "nyc": {
+    "all": true,
+    "exclude": [
+      ".mocharc.js",
+      "coverage/**",
+      "node_modules/**",
+      "**/node_modules/**",
+      "*spec.js",
+      "**/*spec.js"
+    ]
+  },
+  "devDependencies": {
+    "chai": "^4.3.4",
+    "mocha": "^9.1.1"
+  },
+  "dependencies": {
+    "@incdevco/lambda": "^1.9.1"
+  }
+}
