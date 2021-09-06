@@ -1,6 +1,18 @@
 
-const logger = require('@incdevco/lambda/logger');
+const logger = console;
 const Promise = require('bluebird');
+
+const DEBUG = process.env.DEBUG || false;
+
+logger.debug = (...rest) => {
+  
+  if (DEBUG) {
+    
+    console.log(...rest);
+    
+  }
+  
+};
 
 class ACL {
   
