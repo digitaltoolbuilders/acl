@@ -2,8 +2,17 @@
 const expect = require('chai').expect;
 
 const ACL = require('./index');
+const NotAllowed = ACL.NotAllowed;
+
+const sandbox = require('sinon').createSandbox();
 
 describe('@digitaltoolbuilders/acl', () => {
+  
+  afterEach(() => {
+    
+    sandbox.verifyAndRestore();
+    
+  });
   
   describe('ACL', () => {
     
@@ -143,6 +152,54 @@ describe('@digitaltoolbuilders/acl', () => {
         return true;
         
       });
+      
+    });
+    
+    describe('isAllowedList', () => {
+      
+      let expected, list;
+      
+      beforeEach(() => {
+        
+        expected = ['item1'];
+        
+        list = ['item1', 'item2'];
+        
+      });
+      
+      it('should resolve allowed items', () => {
+        
+        const stub = sandbox.mock(acl);
+        
+        stub
+          .expects('isAllowed')
+          .resolves(true);
+          
+        stub
+          .expects('isAllowed')
+          .rejects(new NotAllowed());
+        
+        return acl.isAllowedList(role, action, resource, user, list)
+        .then((result) => {
+          
+          expect(result).to.deep.equal(expected);
+          
+        });
+        
+      });
+      
+    });
+    
+    it('should accept an array of actions', () => {
+      
+      const actions = [action, 'action-2'];
+      
+      acl.allow(role, actions, resource);
+      
+      return Promise.all([
+        acl.isAllowed(role, action, resource, context, user),
+        acl.isAllowed(role, 'action-2', resource, context, user)
+      ]);
       
     });
     
