@@ -1,6 +1,6 @@
 {
   "name": "@digitaltoolbuilders/acl",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "author": "Shawn Ostler <shawn@incdev.co>",
   "devDependencies": {
     "chai": "^4.3.4",

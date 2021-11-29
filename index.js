@@ -26,9 +26,19 @@ class ACL {
     
     this.rules[role][resource] = this.rules[role][resource] || [];
     
-    this.rules[role][resource][action] = this.rules[role][resource][action] || [];
+    if (!Array.isArray(action)) {
+      
+      action = [action];
+      
+    }
     
-    this.rules[role][resource][action].push(rule);
+    action.forEach((action) => {
+        
+      this.rules[role][resource][action] = this.rules[role][resource][action] || [];
+      
+      this.rules[role][resource][action].push(rule);
+      
+    });
     
   }
   

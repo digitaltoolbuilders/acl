@@ -190,6 +190,19 @@ describe('@digitaltoolbuilders/acl', () => {
       
     });
     
+    it('should accept an array of actions', () => {
+      
+      const actions = [action, 'action-2'];
+      
+      acl.allow(role, actions, resource);
+      
+      return Promise.all([
+        acl.isAllowed(role, action, resource, context, user),
+        acl.isAllowed(role, 'action-2', resource, context, user)
+      ]);
+      
+    });
+    
   });
   
   describe('acl', () => {
