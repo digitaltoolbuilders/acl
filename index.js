@@ -1,6 +1,6 @@
 
 const logger = console;
-const Promise = require('bluebird');
+const Bluebird = require('bluebird');
 
 const DEBUG = process.env.DEBUG || false;
 
@@ -34,7 +34,7 @@ class ACL {
   
   isAllowed(role, action, resource, context, user) {
     
-    return Promise.try(() => {
+    return Bluebird.try(() => {
       
       let rules = [];
       
@@ -54,7 +54,7 @@ class ACL {
       
       let isAllowed = false;
       
-      let promise = Promise.resolve(true);
+      let promise = Bluebird.resolve(true);
       
       rules.forEach((rule) => {
         
@@ -94,6 +94,49 @@ class ACL {
         }
         
       });
+      
+    });
+    
+  }
+  
+  isAllowedList(role, action, resource, user, list) {
+    
+    const allowed = [];
+    
+    let promise = Bluebird.resolve(true);
+    
+    list.forEach((context) => {
+      
+      promise = promise.then(() => {
+        
+        return this.isAllowed(role, action, resource, context, user)
+        .then(() => {
+          
+          allowed.push(context);
+          
+          return true;
+          
+        })
+        .catch((exception) => {
+          
+          if (exception instanceof NotAllowed) {
+            
+            return false;
+          
+          }
+          
+          throw exception;
+          
+        });
+        
+      });
+      
+    });
+    
+    return promise
+    .then(() => {
+      
+      return allowed;
       
     });
     
@@ -152,7 +195,7 @@ class Rule {
   
   evaluate(role, context, user) {
     
-    return Promise.try(() => {
+    return Bluebird.try(() => {
       
       logger.debug('rule.evaluate', this.role, this.resource, this.action);
       
