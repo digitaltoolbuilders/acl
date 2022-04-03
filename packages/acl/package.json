@@ -1,0 +1,10 @@
+{
+  "name": "@digitaltoolbuilders/acl",
+  "version": "1.0.0",
+  "dependencies": {
+    "bluebird": "^3.7.2"
+  },
+  "publishConfig": {
+    "@digitaltoolbuilders:registry": "https://npm.pkg.github.com"
+  }
+}

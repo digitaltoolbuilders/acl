@@ -1,0 +1,34 @@
+{
+  "root": "packages/acl",
+  "sourceRoot": "packages/acl/src",
+  "projectType": "library",
+  "targets": {
+    "lint": {
+      "executor": "@nrwl/linter:eslint",
+      "outputs": ["{options.outputFile}"],
+      "options": {
+        "lintFilePatterns": ["packages/acl/**/*.ts"]
+      }
+    },
+    "test": {
+      "executor": "@nrwl/jest:jest",
+      "outputs": ["coverage/packages/acl"],
+      "options": {
+        "jestConfig": "packages/acl/jest.config.js",
+        "passWithNoTests": true
+      }
+    },
+    "build": {
+      "executor": "@nrwl/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/packages/acl",
+        "tsConfig": "packages/acl/tsconfig.lib.json",
+        "packageJson": "packages/acl/package.json",
+        "main": "packages/acl/src/index.ts",
+        "assets": ["packages/acl/*.md"]
+      }
+    }
+  },
+  "tags": []
+}
