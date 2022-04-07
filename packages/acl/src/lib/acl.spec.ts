@@ -39,7 +39,15 @@ describe('acl', () => {
       });
       
     });
-    
+
+    it('should accept an array of roles to check', () => {
+      
+      acl.allow(role, action, resource);
+
+      return acl.isAllowed([role, 'does-not-exist'], action, resource, context, user);
+      
+    });
+
   });
   
   describe('Rule', () => {

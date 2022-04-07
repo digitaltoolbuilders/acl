@@ -85,45 +85,59 @@ export class ACL {
     
   }
   
-  isAllowed(role: string, action: string, resource: string, user: any, context: any) {
+  isAllowed<T>(roles: string | string[], action: string, resource: string, user: any, context: T): Promise<T> {
     
-    const notAllowed = new NotAllowed(`${role} is not allowed to ${action} on ${resource}`);
-      
-    return Bluebird.try(() => {
-      
-      let rules: Rule[] = [];
-      
-      rules = rules.concat(this.getRulesForRole(role, resource, action));
-      
-      if (this.inheritance[role]) {
-        
-        const parentRole = this.inheritance[role];
+    if (!Array.isArray(roles)) {
 
-        const parentRules = this.getRulesForRole(parentRole, resource, action);
+      roles = [ roles ];
 
-        rules = rules.concat(parentRules);
-        
-      }
+    }
 
-      debug('isAllowed','rules', rules);
-    
-      if (rules.length === 0) {
-        
-        throw notAllowed;
-        
-      }
+    const notAllowed = new NotAllowed(`${JSON.stringify(roles)} is not allowed to ${action} on ${resource}`);
       
-      const promises: Promise<any>[] = [];
+    const promises = roles.map((role: string) => {
+
+      const notAllowed = new NotAllowed(`${role} is not allowed to ${action} on ${resource}`);
       
-      rules.forEach((rule: Rule) => {
+      return Bluebird.try(() => {
         
-        promises.push(rule.evaluate(role, user, context));
+        let rules: Rule[] = [];
+        
+        rules = rules.concat(this.getRulesForRole(role, resource, action));
+        
+        if (this.inheritance[role]) {
+          
+          const parentRole = this.inheritance[role];
+  
+          const parentRules = this.getRulesForRole(parentRole, resource, action);
+  
+          rules = rules.concat(parentRules);
+          
+        }
+  
+        debug('isAllowed','rules', rules);
+      
+        if (rules.length === 0) {
+          
+          throw notAllowed;
+          
+        }
+        
+        const promises: Promise<any>[] = [];
+        
+        rules.forEach((rule: Rule) => {
+          
+          promises.push(rule.evaluate(role, user, context));
+          
+        });
+        
+        return Bluebird.any(promises);
         
       });
       
-      return Bluebird.any(promises);
-      
-    })
+    });
+
+    return Bluebird.any(promises)
     .then(() => {
       
       return context;
@@ -134,20 +148,20 @@ export class ACL {
       throw notAllowed;
       
     });
-    
+
   }
   
-  isAllowedList(role: string, action: string, resource: string, user: any, list: any[]) {
+  isAllowedList<T>(role: string, action: string, resource: string, user: any, list: Array<T>): Promise<Array<T>> {
     
-    const allowed: any[] = [];
+    const allowed: T[] = [];
     
     let promise: Promise<any> = Promise.resolve(true);
     
-    list.forEach((item: any) => {
+    list.forEach((item: T) => {
       
       promise = promise.then(() => {
         
-        return this.isAllowed(role, action, resource, user, item)
+        return this.isAllowed<T>(role, action, resource, user, item)
         .then(() => {
           
           allowed.push(item);
