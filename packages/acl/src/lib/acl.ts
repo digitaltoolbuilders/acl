@@ -151,7 +151,7 @@ export class ACL {
 
   }
   
-  isAllowedList<T>(role: string, action: string, resource: string, user: any, list: Array<T>): Promise<Array<T>> {
+  isAllowedList<T>(role: string | string[], action: string, resource: string, user: any, list: Array<T>): Promise<Array<T>> {
     
     const allowed: T[] = [];
     
