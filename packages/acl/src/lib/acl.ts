@@ -1,20 +1,10 @@
 
 import * as Bluebird from 'bluebird';
 
-const DEBUG = (process) ? process.env.DEBUG === 'true' : (window) ? (window as any).LOG_LEVEL === 'DEBUG' : false;
-
-function debug(...params) {
-
-  if (DEBUG) {
-
-    console.log(...params);
-
-  }
-
-}
-
 export class ACL {
   
+  debug = false;
+
   inheritance: {[key: string]: string} = {};
   
   rules: {
@@ -115,8 +105,12 @@ export class ACL {
           
         }
   
-        debug('isAllowed','rules', rules);
-      
+        if (this.debug) {
+        
+          console.log('isAllowed','rules', rules);
+       
+        }
+        
         if (rules.length === 0) {
           
           throw notAllowed;
@@ -261,9 +255,13 @@ export class Rule {
     public assert?: Assertion[]
   ) { }
   
-  evaluate(role: string, user: any, context: any): Promise<any> {
+  evaluate(role: string, user: any, context: any, debug = false): Promise<any> {
     
-    debug('rule.evalute', role, user, context);
+    if (debug) {
+
+      console.log('rule.evalute', role, user, context);
+
+    }
 
     if (!this.assert || this.assert.length === 0) {
       
