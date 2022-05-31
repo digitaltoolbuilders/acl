@@ -1,7 +1,7 @@
 
 import * as Bluebird from 'bluebird';
 
-const DEBUG = process.env.DEBUG === 'true';
+const DEBUG = (process) ? process.env.DEBUG === 'true' : (window) ? (window as any).LOG_LEVEL === 'DEBUG' : false;
 
 function debug(...params) {
 
