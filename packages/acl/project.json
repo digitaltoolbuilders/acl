@@ -26,7 +26,16 @@
         "tsConfig": "packages/acl/tsconfig.lib.json",
         "packageJson": "packages/acl/package.json",
         "main": "packages/acl/src/index.ts",
-        "assets": ["packages/acl/*.md"]
+        "assets": ["packages/acl/*.md"],
+        "updateBuildableProjectDepsInPackageJson": false
+      }
+    },
+    "publish": {
+      "executor": "@nrwl/workspace:run-commands",
+      "options": {
+        "command": "npm publish",
+        "cwd": "dist/packages/acl",
+        "parallel": false
       }
     }
   },
