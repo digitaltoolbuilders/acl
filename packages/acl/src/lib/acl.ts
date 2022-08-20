@@ -1,284 +1,323 @@
 
 import * as Bluebird from 'bluebird';
 
-export class ACL {
-  
-  debug = false;
+export const ALLOW = 'allow';
+export const DENY = 'deny';
 
-  inheritance: {[key: string]: string} = {};
-  
-  rules: {
-    [key: string]: {
-      [key: string]: {
-        [key: string]: Rule[]
-      }
+export class ACL<User=any> {
+
+  inheritance: { [key: string]: string } = {};
+
+  rules: RuleMap = {};
+
+  allow<Context=any>(role: string, actions: string | Array<string>, assert?: Assertion<User,Context> | Array<Assertion<User,Context>>) {
+
+    if (!Array.isArray(actions)) {
+
+      actions = [actions];
+
     }
-  } = {};
-  
-  allow(role: string, action: string[] | string, resource: string, assert?: Assertion[] | Assertion) {
-    
-    if (!Array.isArray(action)) {
-      
-      action = [action];
-      
-    }
-    
-    let ruleAssert: Assertion[];
-    
+
     if (assert && !Array.isArray(assert)) {
-      
-      ruleAssert = [assert] as Assertion[];
-      
+
+      assert = [assert];
+
     } else {
-      
-      ruleAssert = assert as Assertion[];
-      
+
+      assert = [];
+
     }
-    
-    const rule = new Rule(action, resource, ruleAssert);
-    
-    action.forEach((action: string) => {
-      
+
+    const rule = new Rule<User, Context>(ALLOW, actions, assert);
+
+    actions.forEach((action: string) => {
+
       this.rules[role] = this.rules[role] || {};
-      
-      this.rules[role][resource] = this.rules[role][resource] || {};
-      
-      this.rules[role][resource][action] = this.rules[role][resource][action] || [];
-      
-      this.rules[role][resource][action].push(rule);
-      
+
+      this.rules[role][action] = this.rules[role][action] || [];
+
+      this.rules[role][action].push(rule);
+
     });
-    
+
   }
-  
-  getRulesForRole(role: string, resource: string, action: string) {
-    
-    if (
-      this.rules[role]
-      && this.rules[role][resource]
-      && this.rules[role][resource][action]
-    ) {
-        
-      return this.rules[role][resource][action];
-      
+
+  deny<Context=any>(role: string, actions: string | Array<string>, assert?: Assertion<User,Context> | Array<Assertion<User,Context>>) {
+
+    if (!Array.isArray(actions)) {
+
+      actions = [actions];
+
+    }
+
+    if (assert && !Array.isArray(assert)) {
+
+      assert = [assert];
+
     } else {
-      
-      return [];
-      
+
+      assert = [];
+
     }
-      
+
+    const rule = new Rule<User, Context>(DENY, actions, assert);
+
+    actions.forEach((action: string) => {
+
+      this.rules[role] = this.rules[role] || {};
+
+      this.rules[role][action] = this.rules[role][action] || [];
+
+      this.rules[role][action].push(rule);
+
+    });
+
   }
-  
+
+  getRules(role: string, action: string) {
+
+    let rules: Array<Rule<User,any>> = [];
+
+    if (this.rules[role]) {
+
+      rules = rules.concat(this.rules[role][action] || []);
+
+    }
+
+    if (this.inheritance[role]) {
+
+      rules = rules.concat(this.getRules(this.inheritance[role], action));
+
+    }
+
+    return rules;
+
+  }
+
+  hasAllow(rules: Array<Rule<User,any>>) {
+
+    let has = false;
+
+    rules.forEach((rule: Rule<User,any>) => {
+
+      if (rule.type === ALLOW) {
+
+        has = true;
+
+      }
+
+    });
+
+    return has;
+
+  }
+
+  hasDeny(rules: Array<Rule<User,any>>) {
+
+    let has = false;
+
+    rules.forEach((rule: Rule<User,any>) => {
+
+      if (rule.type === DENY) {
+
+        has = true;
+
+      }
+
+    });
+
+    return has;
+
+  }
+
   inherit(child: string, parent: string) {
-    
+
     this.inheritance[child] = parent;
-    
+
   }
-  
-  isAllowed<T>(roles: string | string[], action: string, resource: string, user: any, context: T): Promise<T> {
+
+  isAllowed<Context>(roles: Array<string>, action: string, user: User, context: Context): Promise<Context> {
+
+    // evalute all rules for each role
     
-    if (!Array.isArray(roles)) {
+    // matching rules will return true
 
-      roles = [ roles ];
+    const matches: Array<Rule<User,Context>> = [];
 
-    }
+    const promises: Array<Promise<any>> = [];
 
-    const notAllowed = new NotAllowed(`${JSON.stringify(roles)} is not allowed to ${action} on ${resource}`);
-      
-    const promises = roles.map((role: string) => {
+    roles.forEach((role: string) => {
 
-      const notAllowed = new NotAllowed(`${role} is not allowed to ${action} on ${resource}`);
-      
-      return Bluebird.try(() => {
-        
-        let rules: Rule[] = [];
-        
-        rules = rules.concat(this.getRulesForRole(role, resource, action));
-        
-        if (this.inheritance[role]) {
-          
-          const parentRole = this.inheritance[role];
-  
-          const parentRules = this.getRulesForRole(parentRole, resource, action);
-  
-          rules = rules.concat(parentRules);
-          
-        }
-  
-        if (this.debug) {
-        
-          console.log('isAllowed','rules', rules);
-       
-        }
-        
-        if (rules.length === 0) {
-          
-          throw notAllowed;
-          
-        }
-        
-        const promises: Promise<any>[] = [];
-        
-        rules.forEach((rule: Rule) => {
-          
-          promises.push(rule.evaluate(role, user, context));
-          
+      const rules = this.getRules(role, action);
+
+      const promise = Promise.all(rules.map((rule: Rule<User,Context>) => {
+
+        return rule.evaluate(role, action, user, context)
+        .then((match: boolean) => {
+
+          if (match) {
+
+            matches.push(rule);
+
+          }
+
+          return match;
+
         });
-        
-        return Bluebird.any(promises);
-        
-      });
-      
+
+      }));
+
+      promises.push(promise);
+
     });
 
-    return Bluebird.any(promises)
+    return Promise.all(promises)
     .then(() => {
-      
-      return context;
-      
-    })
-    .catch(() => {
-      
-      throw notAllowed;
-      
+
+      if (this.hasAllow(matches) && !this.hasDeny(matches)) {
+
+        return context;
+
+      } else {
+
+        throw new NotAllowed(`Not Allowed to ${action} with ${JSON.stringify(roles)}`);
+
+      }
+
     });
 
   }
-  
-  isAllowedList<T>(role: string | string[], action: string, resource: string, user: any, list: Array<T>): Promise<Array<T>> {
-    
-    const allowed: T[] = [];
-    
-    let promise: Promise<any> = Promise.resolve(true);
-    
-    list.forEach((item: T) => {
-      
-      promise = promise.then(() => {
-        
-        return this.isAllowed<T>(role, action, resource, user, item)
-        .then(() => {
-          
-          allowed.push(item);
-          
-          return true;
-          
-        })
-        .catch(() => {
-          
+
+  listAllowed<Context>(roles: Array<string>, action: string, user: User, context: Array<Context>): Promise<Array<Context>> {
+
+    const allowed: Array<Context> = [];
+
+    const promises: Array<Promise<any>> = [];
+
+    context.forEach((item: Context) => {
+
+      promises.push(this.isAllowed(roles, action, user, item)
+      .then((item: Context) => {
+
+        allowed.push(item);
+
+      })
+      .catch((exception: NotAllowed | any) => {
+
+        if (exception.isNotAllowed) {
+
           return false;
-          
-        });
-        
-      });
-      
+
+        } else {
+
+          throw exception;
+
+        }
+
+      }));
+
     });
-    
-    return promise
+
+    return Promise.all(promises)
     .then(() => {
-      
+
       return allowed;
-      
+
     });
-    
+
   }
-  
+
 }
 
-export type AssertionFunction = (role: string, user: any, context: any) => Promise<boolean> | boolean;
+export type AssertFunction<User,Context> = (role: string, action: string, user: User, context: Context) => boolean | Promise<boolean>; 
 
-export class Assertion {
+export class Assertion<User,Context> {
 
-  constructor(private fn: AssertionFunction, public message?: string) { }
+  constructor(private fn: AssertFunction<User,Context>, private message: string) { }
 
-  assert(role: string, user: any, context: any) {
+  assert(role: string, action: string, user: User, context: Context) {
 
     return Bluebird.try(() => {
 
-      return this.fn(role, user, context);
-
-    })
-    .then((isAllowed: boolean) => {
-
-      if (!isAllowed) {
-
-        throw new AssertionFailed(this.message);
-
-      }
-
-      return true;
+      return this.fn(role, action, user, context);
 
     });
 
   }
 
-}
-
-export class AssertionFailed extends Error {
-  
-  isNotAllowed = true;
-
-  constructor(m: string = 'An Assertion Failed') {
-    
-    super(m);
-    
-    Object.setPrototypeOf(this, AssertionFailed.prototype);
-    
-  }
-  
 }
 
 export class NotAllowed extends Error {
-  
+
   isNotAllowed = true;
-  
-  constructor(m: string = 'Not Allowed') {
-    
+
+  constructor(m: string) {
+
     super(m);
-    
-    Object.setPrototypeOf(this, AssertionFailed.prototype);
-    
+
+    Object.setPrototypeOf(this, NotAllowed.prototype);
+
   }
-  
+
   get name() {
-    
+
     return this.constructor.name;
-    
+
   }
 
 }
 
-export class Rule {
-  
-  constructor(
-    public action: string[], 
-    public resource: string, 
-    public assert?: Assertion[]
-  ) { }
-  
-  evaluate(role: string, user: any, context: any, debug = false): Promise<any> {
-    
-    if (debug) {
+export class Rule<User=any,Context=any> {
 
-      console.log('rule.evalute', role, user, context);
+  private assert: Array<Assertion<User,Context>> = [];
+
+  constructor(public type: string, private actions: Array<string>, assert?: Assertion<User,Context> | Array<Assertion<User,Context>>) { 
+
+    if (assert) {
+
+      if(!Array.isArray(assert)) {
+
+        assert = [assert];
+
+      }
+
+      this.assert = assert;
 
     }
 
-    if (!this.assert || this.assert.length === 0) {
-      
-      return Promise.resolve(true);
-      
-    }
-    
-    const promises: Promise<any>[] = [];
-    
-    this.assert.forEach((assertion: Assertion) => {
-      
-      promises.push(assertion.assert(role, user, context));
-      
-    });
-    
-    return Promise.all(promises);
-    
   }
-  
+
+  evaluate(role: string, action: string, user: User, context: Context) {
+
+    const promises: Array<Promise<boolean>> = this.assert.map((assertion: Assertion<User,Context>) => {
+
+      return assertion.assert(role, action, user, context);
+
+    });
+
+    return Promise.all(promises)
+    .then((results: Array<boolean>) => {
+
+      if (results.includes(false)) {
+
+        return false;
+
+      } else {
+
+        return true;
+
+      }
+
+    });
+
+  }
+
+}
+
+export interface RuleMap {
+
+  [key: string]: {
+    [key: string]: Array<Rule<any,any>>
+  };
+
 }

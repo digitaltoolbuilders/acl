@@ -2,7 +2,9 @@
   "name": "@digitaltoolbuilders/acl",
   "version": "1.0.0",
   "license": "MIT",
-  "scripts": {},
+  "scripts": {
+    "login-dtb": "npm login --scope=@digitaltoolbuilders --registry=https://npm.pkg.github.com"
+  },
   "dependencies": {
     "bluebird": "^3.7.2",
     "tslib": "^2.0.0"
